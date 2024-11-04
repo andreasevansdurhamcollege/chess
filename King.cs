@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Windows.Controls;
-using System.Windows;
 
 namespace ChessGame
 {
@@ -10,19 +9,16 @@ namespace ChessGame
         {
         }
 
-        // Override matching the inherited method signature
-        public override List<(int Row, int Col)> GetValidMoves(Button[,] board)
+        // Updated GetValidMoves to include ChessLogic parameter
+        public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
         {
             List<(int Row, int Col)> validMoves = new List<(int Row, int Col)>();
 
-            // Get a reference to MainWindow to access IsInCheck or IsSquareThreatened if needed
-            MainWindow mainWindow = (MainWindow)Application.Current.MainWindow;
-
             // Normal one-square moves
             int[,] moves = {
-        { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
-        { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }
-    };
+                { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
+                { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }
+            };
 
             for (int i = 0; i < moves.GetLength(0); i++)
             {
@@ -43,14 +39,14 @@ namespace ChessGame
                         Position = (newRow, newCol);
                         targetSquare.Tag = this;
 
-                        bool isSafe = !mainWindow.IsSquareThreatened((newRow, newCol), Owner);
+                        bool isSafe = !chessLogic.IsSquareThreatened((newRow, newCol), Owner);
 
                         // Restore the original position and state
                         Position = originalPosition;
                         targetSquare.Tag = originalTarget;
 
                         // Add move if safe, or if capturing an unprotected piece
-                        if (isSafe || (targetPiece != null && targetPiece.Owner != Owner && !mainWindow.IsSquareThreatened((newRow, newCol), targetPiece.Owner)))
+                        if (isSafe || (targetPiece != null && targetPiece.Owner != Owner && !chessLogic.IsSquareThreatened((newRow, newCol), targetPiece.Owner)))
                         {
                             validMoves.Add((newRow, newCol));
                         }
@@ -59,15 +55,15 @@ namespace ChessGame
             }
 
             // Castling
-            if (!HasMoved && !mainWindow.IsInCheck(Owner))
+            if (!HasMoved && !chessLogic.IsInCheck(Owner))
             {
                 // Kingside castling (short)
-                if (CanCastle(board, mainWindow, true))
+                if (CanCastle(board, chessLogic, true))
                 {
                     validMoves.Add((Position.Row, Position.Col + 2));
                 }
                 // Queenside castling (long)
-                if (CanCastle(board, mainWindow, false))
+                if (CanCastle(board, chessLogic, false))
                 {
                     validMoves.Add((Position.Row, Position.Col - 2));
                 }
@@ -76,11 +72,8 @@ namespace ChessGame
             return validMoves;
         }
 
-
-
-
         // Castling validation method
-        private bool CanCastle(Button[,] board, MainWindow mainWindow, bool isKingside)
+        private bool CanCastle(Button[,] board, ChessLogic chessLogic, bool isKingside)
         {
             int row = Position.Row;
             int rookCol = isKingside ? 7 : 0;   // Rook starting column
@@ -98,12 +91,12 @@ namespace ChessGame
                 // Check if each square the king would pass through is not threatened
                 for (int col = Position.Col; col != Position.Col + 2 * direction; col += direction)
                 {
-                    if (mainWindow.IsSquareThreatened((row, col), Owner)) return false; // Square is threatened
+                    if (chessLogic.IsSquareThreatened((row, col), Owner)) return false; // Square is threatened
                 }
 
                 // Also check the destination square for the king
                 int destinationCol = Position.Col + 2 * direction;
-                if (mainWindow.IsSquareThreatened((row, destinationCol), Owner)) return false;
+                if (chessLogic.IsSquareThreatened((row, destinationCol), Owner)) return false;
 
                 return true; // All conditions for castling are met
             }
@@ -111,9 +104,7 @@ namespace ChessGame
             return false; // Castling is not allowed
         }
 
-
-
-        // CanAttackSquare method for check detection (as in the previous setup)
+        // CanAttackSquare method for check detection
         public override bool CanAttackSquare((int Row, int Col) square, Button[,] board)
         {
             int[,] moves = {

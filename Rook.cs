@@ -9,8 +9,8 @@ namespace ChessGame
         {
         }
 
-        // Method to get all valid moves for the rook
-        public override List<(int Row, int Col)> GetValidMoves(Button[,] board)
+        // Updated GetValidMoves to include ChessLogic parameter
+        public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
         {
             List<(int Row, int Col)> validMoves = new List<(int Row, int Col)>();
 

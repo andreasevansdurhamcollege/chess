@@ -1,48 +1,76 @@
 ﻿using ChessGame;
 using System.Windows.Controls;
-using System.Windows;
 using System.Collections.Generic;
 
 internal class Pawn : Piece
 {
+    public bool HasJustMovedTwoSquares { get; set; }
     public Pawn(Player owner, (int Row, int Col) position) : base(owner, position)
     {
     }
 
-    public override List<(int Row, int Col)> GetValidMoves(Button[,] board)
+    // Updated GetValidMoves to include ChessLogic parameter
+    public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
     {
         List<(int Row, int Col)> validMoves = new List<(int Row, int Col)>();
         int direction = Owner == Player.White ? -1 : 1;
 
-        // Standard one-square move forward
-        int newRow = Position.Row + direction;
-        if (newRow >= 0 && newRow < 8 && board[newRow, Position.Col].Content == null)
-        {
-            validMoves.Add((newRow, Position.Col));
+        int currentRow = Position.Row;
+        int currentCol = Position.Col;
 
-            // Two-square move from starting position only if it hasn't moved before
-            if (!HasMoved && board[newRow + direction, Position.Col].Content == null)
+        // Standard one-square move forward
+        int newRow = currentRow + direction;
+        if (IsWithinBounds(newRow, currentCol) && board[newRow, currentCol].Tag == null)
+        {
+            validMoves.Add((newRow, currentCol));
+
+            // Two-square move from starting position
+            if (!HasMoved)
             {
-                validMoves.Add((newRow + direction, Position.Col));
+                int twoRow = currentRow + 2 * direction;
+                if (IsWithinBounds(twoRow, currentCol) && board[twoRow, currentCol].Tag == null)
+                {
+                    validMoves.Add((twoRow, currentCol));
+                }
             }
         }
 
-        // Capture moves
-        int[] captureCols = { Position.Col - 1, Position.Col + 1 };
-        foreach (int newCol in captureCols)
+        // Capture moves including en passant
+        int[] captureCols = { currentCol - 1, currentCol + 1 };
+        foreach (int col in captureCols)
         {
-            if (newCol >= 0 && newCol < 8)
+            if (IsWithinBounds(newRow, col))
             {
-                Button targetSquare = board[newRow, newCol];
+                Button targetSquare = board[newRow, col];
+
+                // Normal capture
                 if (targetSquare.Tag is Piece targetPiece && targetPiece.Owner != Owner)
                 {
-                    validMoves.Add((newRow, newCol));
+                    validMoves.Add((newRow, col));
+                }
+                // En passant capture
+                else if (board[currentRow, col].Tag is Pawn adjacentPawn &&
+                         adjacentPawn.Owner != Owner &&
+                         adjacentPawn == chessLogic.LastMovedPiece &&
+                         adjacentPawn.HasJustMovedTwoSquares)
+                {
+                    validMoves.Add((newRow, col));
                 }
             }
         }
 
         return validMoves;
     }
+
+    private bool IsWithinBounds(int row, int col)
+    {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
+
+
+
+
+
 
     // Override MarkAsMoved to set HasMoved to true after the first move
     public override void MarkAsMoved()

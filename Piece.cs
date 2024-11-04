@@ -1,4 +1,5 @@
 ﻿using ChessGame;
+using System.Collections.Generic;
 using System.Windows.Controls;
 
 public class Piece
@@ -13,7 +14,8 @@ public class Piece
         Position = position;
     }
 
-    public virtual List<(int Row, int Col)> GetValidMoves(Button[,] board)
+    // Updated GetValidMoves to include ChessLogic parameter
+    public virtual List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
     {
         return new List<(int Row, int Col)>();
     }

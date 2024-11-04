@@ -14,14 +14,16 @@ namespace ChessGame
         private List<Button> highlightedSquares = new List<Button>();
         private Player currentPlayer = Player.White;
         private List<string> moveHistory = new List<string>();
-        public Piece LastMovedPiece {  get; set; }
+        public Piece LastMovedPiece { get; set; }
+        private ChessLogic chessLogic;
 
         public MainWindow()
         {
             InitializeComponent();
+            chessLogic = new ChessLogic(buttonArray);
             CreateChessBoard();
             InitializePieces();
-    
+            
         }
 
         private void CreateChessBoard()
@@ -105,7 +107,7 @@ namespace ChessGame
                     HighlightSquare(selectedSquare, true);
 
                     // Highlight valid moves for the selected piece
-                    var safeMoves = IsInCheck(currentPlayer) ? GetSafeMoves(selectedPiece) : selectedPiece.GetValidMoves(buttonArray);
+                    var safeMoves = chessLogic.IsInCheck(currentPlayer) ? GetSafeMoves(selectedPiece) : selectedPiece.GetValidMoves(buttonArray, chessLogic);
                     foreach (var move in safeMoves)
                     {
                         Button targetSquare = buttonArray[move.Row, move.Col];
@@ -127,8 +129,8 @@ namespace ChessGame
                     ClearOutline();
 
                     // Check for check or checkmate after the move
-                    bool isCheck = IsInCheck(currentPlayer == Player.White ? Player.Black : Player.White);
-                    if (IsCheckmate(currentPlayer == Player.White ? Player.Black : Player.White))
+                    bool isCheck = chessLogic.IsInCheck(currentPlayer == Player.White ? Player.Black : Player.White);
+                    if (chessLogic.IsCheckmate(currentPlayer == Player.White ? Player.Black : Player.White))
                     {
                         MessageBox.Show($"{currentPlayer} wins by checkmate!");
                     }
@@ -143,7 +145,7 @@ namespace ChessGame
 
                     // Switch turns after a successful move
                     currentPlayer = currentPlayer == Player.White ? Player.Black : Player.White;
-                    
+
                 }
                 else
                 {
@@ -156,55 +158,74 @@ namespace ChessGame
 
         private void MovePiece(Button fromSquare, Button toSquare)
         {
-            toSquare.Content = fromSquare.Content;
-            toSquare.Tag = fromSquare.Tag;
-
             if (fromSquare.Tag is Piece movingPiece)
             {
-                movingPiece.Position = (Grid.GetRow(toSquare), Grid.GetColumn(toSquare));
+                int fromRow = Grid.GetRow(fromSquare);
+                int fromCol = Grid.GetColumn(fromSquare);
+                int toRow = Grid.GetRow(toSquare);
+                int toCol = Grid.GetColumn(toSquare);
 
-                // Mark the king or rook as having moved if this is their first move
-                if (movingPiece is King || movingPiece is Rook)
+                // Clear en passant flags for all pawns
+                foreach (Button btn in buttonArray)
                 {
-                    movingPiece.MarkAsMoved();
+                    if (btn.Tag is Pawn pawn)
+                    {
+                        pawn.HasJustMovedTwoSquares = false;
+                    }
                 }
 
-                // Handle castling if the king moves two squares
-                if (movingPiece is King king && Math.Abs(Grid.GetColumn(toSquare) - Grid.GetColumn(fromSquare)) == 2)
+                // Handle en passant capture
+                if (movingPiece is Pawn movingPawn)
                 {
-                    bool isKingside = Grid.GetColumn(toSquare) > Grid.GetColumn(fromSquare);
-                    int rookStartCol = isKingside ? 7 : 0;
-                    int rookEndCol = isKingside ? 5 : 3;
-
-                    Button rookSquare = buttonArray[king.Position.Row, rookStartCol];
-                    Button newRookSquare = buttonArray[king.Position.Row, rookEndCol];
-                    newRookSquare.Content = rookSquare.Content;
-                    newRookSquare.Tag = rookSquare.Tag;
-
-                    if (rookSquare.Tag is Rook rook)
+                    // En passant capture
+                    if (fromCol != toCol && toSquare.Tag == null)
                     {
-                        rook.Position = (king.Position.Row, rookEndCol);
-                        rook.MarkAsMoved();
+                        int capturedPawnRow = fromRow;
+                        int capturedPawnCol = toCol;
+                        Button capturedPawnSquare = buttonArray[capturedPawnRow, capturedPawnCol];
+
+                        if (capturedPawnSquare.Tag is Pawn capturedPawn && capturedPawn.Owner != movingPawn.Owner)
+                        {
+                            // Remove the captured pawn
+                            capturedPawnSquare.Content = null;
+                            capturedPawnSquare.Tag = null;
+                        }
                     }
 
-                    rookSquare.Content = null;
-                    rookSquare.Tag = null;
+                    // Check if the pawn moved two squares forward
+                    if (Math.Abs(toRow - fromRow) == 2)
+                    {
+                        movingPawn.HasJustMovedTwoSquares = true;
+                    }
                 }
 
-                if (movingPiece is Pawn pawn && !pawn.HasMoved)
-                {
-                    pawn.MarkAsMoved();
-                }
+                // Move the piece
+                toSquare.Content = fromSquare.Content;
+                toSquare.Tag = fromSquare.Tag;
+
+                movingPiece.Position = (toRow, toCol);
+                movingPiece.MarkAsMoved();
+
+                // Handle castling (if applicable)
+
+                // Update last moved piece
+                chessLogic.LastMovedPiece = movingPiece;
+
+                // Clear the original square
+                fromSquare.Content = null;
+                fromSquare.Tag = null;
+
+                System.Diagnostics.Debug.WriteLine($"LastMovedPiece: {movingPiece.GetType().Name}, Position: {movingPiece.Position}");
             }
-
-            fromSquare.Content = null;
-            fromSquare.Tag = null;
         }
+
+
+
 
         public List<(int Row, int Col)> GetSafeMoves(Piece piece)
         {
             List<(int Row, int Col)> safeMoves = new List<(int Row, int Col)>();
-            var validMoves = piece.GetValidMoves(buttonArray);
+            var validMoves = piece.GetValidMoves(buttonArray, chessLogic);
 
             foreach (var move in validMoves)
             {
@@ -218,7 +239,7 @@ namespace ChessGame
                 targetSquare.Tag = piece;
                 piece.Position = move;
 
-                if (!IsInCheck(piece.Owner))
+                if (!chessLogic.IsInCheck(piece.Owner))
                 {
                     safeMoves.Add(move);
                 }
@@ -230,72 +251,6 @@ namespace ChessGame
             }
 
             return safeMoves;
-        }
-
-        public bool IsSquareThreatened((int Row, int Col) square, Player kingOwner)
-        {
-            for (int row = 0; row < buttonArray.GetLength(0); row++)
-            {
-                for (int col = 0; col < buttonArray.GetLength(1); col++)
-                {
-                    Button button = buttonArray[row, col];
-
-                    if (button.Tag is Piece piece && piece.Owner != kingOwner)
-                    {
-                        if (piece.CanAttackSquare(square, buttonArray))
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
-        public bool IsInCheck(Player player)
-        {
-            (int Row, int Col)? kingPosition = null;
-
-            for (int row = 0; row < buttonArray.GetLength(0); row++)
-            {
-                for (int col = 0; col < buttonArray.GetLength(1); col++)
-                {
-                    Button button = buttonArray[row, col];
-                    if (button.Tag is King king && king.Owner == player)
-                    {
-                        kingPosition = (row, col);
-                        break;
-                    }
-                }
-            }
-
-            if (kingPosition.HasValue)
-            {
-                return IsSquareThreatened(kingPosition.Value, player);
-            }
-
-            return false;
-        }
-
-        public bool IsCheckmate(Player player)
-        {
-            if (!IsInCheck(player)) return false;
-
-            for (int row = 0; row < 8; row++)
-            {
-                for (int col = 0; col < 8; col++)
-                {
-                    Button button = buttonArray[row, col];
-                    if (button.Tag is Piece piece && piece.Owner == player)
-                    {
-                        if (GetSafeMoves(piece).Count > 0)
-                        {
-                            return false;
-                        }
-                    }
-                }
-            }
-            return true;
         }
 
         private void HighlightSquare(Button square, bool highlight)
@@ -325,8 +280,6 @@ namespace ChessGame
             }
             highlightedSquares.Clear();
         }
-
-
 
         private void LogMove(string move)
         {
@@ -399,7 +352,6 @@ namespace ChessGame
             // Initialize pieces again
             InitializePieces();
         }
-
 
         private void ResetGame_Click(object sender, RoutedEventArgs e)
         {
