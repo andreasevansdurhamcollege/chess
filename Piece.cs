@@ -1,32 +1,38 @@
-﻿using ChessGame;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Windows.Controls;
 
-public class Piece
+namespace ChessGame
 {
-    public Player Owner { get; }
-    public (int Row, int Col) Position { get; set; }
-    public bool HasMoved { get; protected set; } = false;
-
-    public Piece(Player owner, (int Row, int Col) position)
+    public enum Player
     {
-        Owner = owner;
-        Position = position;
+        White,
+        Black
     }
 
-    // Updated GetValidMoves to include ChessLogic parameter
-    public virtual List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
+    public abstract class Piece
     {
-        return new List<(int Row, int Col)>();
-    }
+        public Player Owner { get; set; }
+        public (int Row, int Col) Position { get; set; }
+        public bool HasMoved { get; private set; }
 
-    public virtual void MarkAsMoved()
-    {
-        HasMoved = true;
-    }
+        public Piece(Player owner, (int Row, int Col) position)
+        {
+            Owner = owner;
+            Position = position;
+            HasMoved = false;
+        }
 
-    public virtual bool CanAttackSquare((int Row, int Col) square, Button[,] board)
-    {
-        return false;
+        /// <summary>
+        /// Marks the piece as having moved.
+        /// </summary>
+        public virtual void MarkAsMoved()
+        {
+            HasMoved = true;
+        }
+
+        /// <summary>
+        /// Gets the list of valid moves for the piece.
+        /// </summary>
+        public abstract List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic, bool ignoreKingSafety = false);
     }
 }

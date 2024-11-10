@@ -1,22 +1,26 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Windows.Controls;
 
 namespace ChessGame
 {
     public class Move
     {
-        public Piece PieceMoved { get; set; }
-        public (int Row, int Col) StartPosition { get; set; }
-        public (int Row, int Col) EndPosition { get; set; }
+        public Button FromSquare { get; set; }
+        public Button ToSquare { get; set; }
+        public Piece MovedPiece { get; set; }
+        public Piece CapturedPiece { get; set; }
+        public bool IsEnPassant { get; set; }
+        public bool IsCastling { get; set; }
+        public string PromotionPiece { get; set; }
 
-        public Move(Piece piece, (int Row, int Col) startPosition, (int Row, int Col) endPosition)
+        public Move(Button from, Button to, Piece moved, Piece captured = null, bool enPassant = false, bool castling = false, string promotion = null)
         {
-            PieceMoved = piece;
-            StartPosition = startPosition;
-            EndPosition = endPosition;
+            FromSquare = from;
+            ToSquare = to;
+            MovedPiece = moved;
+            CapturedPiece = captured;
+            IsEnPassant = enPassant;
+            IsCastling = castling;
+            PromotionPiece = promotion;
         }
     }
 }

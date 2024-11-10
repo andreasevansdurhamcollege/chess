@@ -3,90 +3,52 @@ using System.Windows.Controls;
 
 namespace ChessGame
 {
-    internal class Rook : Piece
+    public class Rook : Piece
     {
         public Rook(Player owner, (int Row, int Col) position) : base(owner, position)
         {
         }
 
-        // Updated GetValidMoves to include ChessLogic parameter
-        public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
+        public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic, bool ignoreKingSafety = false)
         {
-            List<(int Row, int Col)> validMoves = new List<(int Row, int Col)>();
+            List<(int Row, int Col)> moves = new List<(int Row, int Col)>();
 
-            // Check each direction (up, down, left, right)
-            AddMovesInDirection(board, validMoves, -1, 0); // Up
-            AddMovesInDirection(board, validMoves, 1, 0);  // Down
-            AddMovesInDirection(board, validMoves, 0, -1); // Left
-            AddMovesInDirection(board, validMoves, 0, 1);  // Right
+            // Directions: up, down, left, right
+            int[] dRows = { -1, 1, 0, 0 };
+            int[] dCols = { 0, 0, -1, 1 };
 
-            return validMoves;
-        }
-
-        // Helper method to add moves in a specific direction until an obstacle is encountered
-        private void AddMovesInDirection(Button[,] board, List<(int Row, int Col)> validMoves, int rowOffset, int colOffset)
-        {
-            int currentRow = Position.Row;
-            int currentCol = Position.Col;
-
-            while (true)
+            for (int direction = 0; direction < 4; direction++)
             {
-                currentRow += rowOffset;
-                currentCol += colOffset;
+                int newRow = Position.Row;
+                int newCol = Position.Col;
 
-                // Stop if we move out of bounds
-                if (currentRow < 0 || currentRow >= 8 || currentCol < 0 || currentCol >= 8)
-                    break;
+                while (true)
+                {
+                    newRow += dRows[direction];
+                    newCol += dCols[direction];
 
-                // Check the contents of the square
-                if (board[currentRow, currentCol].Content == null)
-                {
-                    // Empty square
-                    validMoves.Add((currentRow, currentCol));
-                }
-                else if (board[currentRow, currentCol].Tag is Piece piece && piece.Owner != Owner)
-                {
-                    // Square occupied by opponent's piece
-                    validMoves.Add((currentRow, currentCol));
-                    break; // Block further moves in this direction
-                }
-                else
-                {
-                    // Square occupied by player's own piece
-                    break; // Block further moves in this direction
+                    if (newRow < 0 || newRow >= 8 || newCol < 0 || newCol >= 8)
+                        break;
+
+                    Button targetSquare = board[newRow, newCol];
+
+                    if (targetSquare.Tag == null)
+                    {
+                        moves.Add((newRow, newCol));
+                    }
+                    else
+                    {
+                        Piece targetPiece = (Piece)targetSquare.Tag;
+                        if (targetPiece.Owner != Owner)
+                        {
+                            moves.Add((newRow, newCol));
+                        }
+                        break;
+                    }
                 }
             }
-        }
 
-        // Method to check if this rook can attack a specific square (used for threat detection)
-        public override bool CanAttackSquare((int Row, int Col) square, Button[,] board)
-        {
-            int targetRow = square.Row;
-            int targetCol = square.Col;
-
-            // Check if the target square is in the same row or column as the rook
-            if (Position.Row == targetRow || Position.Col == targetCol)
-            {
-                // Determine the direction of movement
-                int rowOffset = targetRow == Position.Row ? 0 : (targetRow > Position.Row ? 1 : -1);
-                int colOffset = targetCol == Position.Col ? 0 : (targetCol > Position.Col ? 1 : -1);
-
-                // Traverse in the direction until we reach the target square or encounter a piece
-                int currentRow = Position.Row + rowOffset;
-                int currentCol = Position.Col + colOffset;
-
-                while (currentRow != targetRow || currentCol != targetCol)
-                {
-                    // Stop if there's an obstacle in the path
-                    if (board[currentRow, currentCol].Tag is Piece)
-                        return false;
-
-                    currentRow += rowOffset;
-                    currentCol += colOffset;
-                }
-                return true; // The rook can attack the target square
-            }
-            return false; // The square is not in line with the rook's movement
+            return moves;
         }
     }
 }

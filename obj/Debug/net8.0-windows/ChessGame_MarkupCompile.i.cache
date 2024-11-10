@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP
 C:\Users\andre\Desktop\Projects\Chess\ChessGame\App.xaml
-11407045341
+2-111154570
 
-151886330422
+161886573477
 1981124507420
-MainWindow.xaml;
+MainWindow.xaml;PromotionWindow.xaml;
 
 False
 

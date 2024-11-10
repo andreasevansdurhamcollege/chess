@@ -1,80 +1,77 @@
-﻿using ChessGame;
-using System.Windows.Controls;
+﻿using System;
 using System.Collections.Generic;
+using System.Windows.Controls;
 
-internal class Pawn : Piece
+namespace ChessGame
 {
-    public bool HasJustMovedTwoSquares { get; set; }
-    public Pawn(Player owner, (int Row, int Col) position) : base(owner, position)
+    public class Pawn : Piece
     {
-    }
+        public bool HasJustMovedTwoSquares { get; set; }
 
-    // Updated GetValidMoves to include ChessLogic parameter
-    public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic)
-    {
-        List<(int Row, int Col)> validMoves = new List<(int Row, int Col)>();
-        int direction = Owner == Player.White ? -1 : 1;
-
-        int currentRow = Position.Row;
-        int currentCol = Position.Col;
-
-        // Standard one-square move forward
-        int newRow = currentRow + direction;
-        if (IsWithinBounds(newRow, currentCol) && board[newRow, currentCol].Tag == null)
+        public Pawn(Player owner, (int Row, int Col) position) : base(owner, position)
         {
-            validMoves.Add((newRow, currentCol));
-
-            // Two-square move from starting position
-            if (!HasMoved)
-            {
-                int twoRow = currentRow + 2 * direction;
-                if (IsWithinBounds(twoRow, currentCol) && board[twoRow, currentCol].Tag == null)
-                {
-                    validMoves.Add((twoRow, currentCol));
-                }
-            }
+            HasJustMovedTwoSquares = false;
         }
 
-        // Capture moves including en passant
-        int[] captureCols = { currentCol - 1, currentCol + 1 };
-        foreach (int col in captureCols)
+        public override List<(int Row, int Col)> GetValidMoves(Button[,] board, ChessLogic chessLogic, bool ignoreKingSafety = false)
         {
-            if (IsWithinBounds(newRow, col))
-            {
-                Button targetSquare = board[newRow, col];
+            List<(int Row, int Col)> moves = new List<(int Row, int Col)>();
 
-                // Normal capture
-                if (targetSquare.Tag is Piece targetPiece && targetPiece.Owner != Owner)
+            int direction = Owner == Player.White ? -1 : 1;
+            int startRow = Owner == Player.White ? 6 : 1;
+
+            int newRow = Position.Row + direction;
+            int col = Position.Col;
+
+            // Forward move
+            if (newRow >= 0 && newRow < 8)
+            {
+                if (board[newRow, col].Tag == null)
                 {
-                    validMoves.Add((newRow, col));
+                    moves.Add((newRow, col));
+
+                    // Double move from starting position
+                    if (Position.Row == startRow)
+                    {
+                        int doubleNewRow = newRow + direction;
+                        if (board[doubleNewRow, col].Tag == null)
+                        {
+                            moves.Add((doubleNewRow, col));
+                        }
+                    }
                 }
-                // En passant capture
-                else if (board[currentRow, col].Tag is Pawn adjacentPawn &&
-                         adjacentPawn.Owner != Owner &&
-                         adjacentPawn == chessLogic.LastMovedPiece &&
-                         adjacentPawn.HasJustMovedTwoSquares)
+
+                // Captures
+                for (int dCol = -1; dCol <= 1; dCol += 2)
                 {
-                    validMoves.Add((newRow, col));
+                    int newCol = col + dCol;
+                    if (newCol >= 0 && newCol < 8)
+                    {
+                        Button targetSquare = board[newRow, newCol];
+
+                        if (targetSquare.Tag is Piece targetPiece)
+                        {
+                            if (targetPiece.Owner != Owner)
+                            {
+                                moves.Add((newRow, newCol));
+                            }
+                        }
+                        else if (!ignoreKingSafety)
+                        {
+                            // En passant
+                            int capturedPawnRow = Position.Row;
+                            int capturedPawnCol = newCol;
+                            Button capturedPawnSquare = board[capturedPawnRow, capturedPawnCol];
+                            if (capturedPawnSquare.Tag is Pawn capturedPawn && capturedPawn.Owner != Owner && capturedPawn.HasJustMovedTwoSquares)
+                            {
+                                moves.Add((newRow, newCol));
+                            }
+                        }
+                    }
                 }
             }
+
+            return moves;
         }
-
-        return validMoves;
-    }
-
-    private bool IsWithinBounds(int row, int col)
-    {
-        return row >= 0 && row < 8 && col >= 0 && col < 8;
-    }
-
-
-
-
-
-
-    // Override MarkAsMoved to set HasMoved to true after the first move
-    public override void MarkAsMoved()
-    {
-        base.MarkAsMoved();
     }
 }
